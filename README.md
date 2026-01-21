@@ -1169,5 +1169,57 @@ http.createServer(async (req, res) => {
 
 </details>
 
+<details>
+<summary><b>Extended tools (Playwright MCP)</b></summary>
+
+These tools are additional capabilities provided by this Playwright MCP server package.
+
+- **browser_setup_page**
+  - Title: Setup page for testing
+  - Description: Prepares a Playwright page into a predictable "ready-to-test" state. Navigates to URL, handles authentication, waits for readiness, and configures the page for testing.
+  - Parameters:
+    - `url` (string, optional): Full URL to navigate to
+    - `baseUrl` (string, optional): Base URL, uses env BASE_URL if not provided
+    - `path` (string, optional): URL path appended to baseUrl (default "/")
+    - `waitUntil` (string, optional): When to consider navigation complete (default "domcontentloaded")
+    - `ready` (object, optional): Conditions to wait for page readiness
+    - `viewport` (object, optional): Browser viewport size (default {width: 1280, height: 720})
+    - `locale` (string, optional): Browser locale, e.g., "en-US"
+    - `timezoneId` (string, optional): Timezone ID, e.g., "America/New_York"
+    - `userAgent` (string, optional): Custom user agent string
+    - `colorScheme` (string, optional): Preferred color scheme
+    - `extraHTTPHeaders` (object, optional): Extra HTTP headers to send with every request
+    - `cookies` (array, optional): Cookies to set before navigation
+    - `storageState` (object, optional): Storage state (cookies and localStorage) to apply
+    - `auth` (object, optional): Authentication configuration
+    - `disableAnimations` (boolean, optional): Inject CSS to disable animations (default true)
+    - `blockResources` (array, optional): Resource types to block, e.g., ["image", "font"]
+    - `permissions` (array, optional): Browser permissions to grant, e.g., ["geolocation"]
+    - `geolocation` (object, optional): Geolocation to emulate
+  - Read-only: **false**
+
+- **read_log**
+  - Title: Read server logs
+  - Description: Return recent server logs for this MCP session. Supports incremental reads via cursor. Useful for debugging and monitoring tool execution.
+  - Parameters:
+    - `cursor` (string, optional): Opaque cursor from previous call; null or omitted means start from earliest retained
+    - `limit` (number, optional): Max events to return; default 200; hard cap 1000
+    - `max_bytes` (number, optional): Cap response size; default 256000; hard cap 1000000
+    - `levels` (array, optional): Subset of ["debug", "info", "warn", "error"] to filter by; default all
+    - `sources` (array, optional): Filter by component/tool name
+    - `include_structured` (boolean, optional): Include structured data fields; default true
+  - Read-only: **true**
+  - Output:
+    - `cursor` (string): Next cursor for incremental reading
+    - `has_more` (boolean): More logs available
+    - `events` (array): Log events with ts, level, source, message, and optional data
+    - `truncated` (boolean): True if max_bytes forced truncation
+  - Features:
+    - Session-scoped ring buffer (last 10,000 events or 10MB)
+    - Automatic redaction of sensitive data (Authorization headers, cookies, tokens, passwords, API keys)
+    - Stack trace truncation for non-debug levels
+
+</details>
+
 
 <!--- End of tools generated section -->

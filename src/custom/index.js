@@ -18,6 +18,7 @@
 
 const path = require('path');
 const { customTools } = require('./tools');
+const { LogBuffer, createLogger } = require('./log-buffer');
 
 // Get path to playwright internals (not exported via package.json exports)
 const playwrightPath = path.dirname(require.resolve('playwright/package.json'));
@@ -37,6 +38,22 @@ function createPatchedBackend(BrowserServerBackend) {
       super(config, factory);
       // Add custom tools to the existing tools array
       this._customTools = customTools;
+      // Create session-scoped log buffer
+      this._logBuffer = new LogBuffer();
+    }
+
+    async initialize(clientInfo) {
+      await super.initialize(clientInfo);
+      // Attach log buffer to context for use by tools
+      if (this._context) {
+        this._context._logBuffer = this._logBuffer;
+      }
+      // Log session initialization
+      const logger = createLogger(this._logBuffer, 'mcp_server');
+      logger.info('MCP session initialized', {
+        clientName: clientInfo?.name,
+        clientVersion: clientInfo?.version,
+      });
     }
 
     async listTools() {
@@ -46,6 +63,16 @@ function createPatchedBackend(BrowserServerBackend) {
     }
 
     async callTool(name, rawArguments) {
+      const logger = createLogger(this._logBuffer, name);
+      const startTime = Date.now();
+
+      // Log tool invocation start (skip logging for read_log to avoid recursion)
+      if (name !== 'read_log') {
+        logger.info(`Tool "${name}" started`, {
+          arguments: this._sanitizeArguments(rawArguments),
+        });
+      }
+
       // Check if this is a custom tool
       const customTool = this._customTools.find(tool => tool.schema.name === name);
 
@@ -63,8 +90,24 @@ function createPatchedBackend(BrowserServerBackend) {
           if (this._sessionLog) {
             this._sessionLog.logResponse(response);
           }
+
+          // Log success
+          if (name !== 'read_log') {
+            const duration = Date.now() - startTime;
+            logger.info(`Tool "${name}" completed`, { durationMs: duration });
+          }
         } catch (error) {
           response.addError(String(error));
+
+          // Log error
+          if (name !== 'read_log') {
+            const duration = Date.now() - startTime;
+            logger.error(`Tool "${name}" failed: ${error.message}`, {
+              durationMs: duration,
+              error: error.message,
+              stack: error.stack,
+            });
+          }
         } finally {
           context.setRunningTool(undefined);
         }
@@ -75,7 +118,50 @@ function createPatchedBackend(BrowserServerBackend) {
       }
 
       // Delegate to base implementation for standard tools
-      return super.callTool(name, rawArguments);
+      try {
+        const result = await super.callTool(name, rawArguments);
+
+        // Log success for standard tools
+        if (name !== 'read_log') {
+          const duration = Date.now() - startTime;
+          const isError = result?.isError;
+          if (isError) {
+            logger.error(`Tool "${name}" failed`, { durationMs: duration });
+          } else {
+            logger.info(`Tool "${name}" completed`, { durationMs: duration });
+          }
+        }
+
+        return result;
+      } catch (error) {
+        // Log error for standard tools
+        if (name !== 'read_log') {
+          const duration = Date.now() - startTime;
+          logger.error(`Tool "${name}" failed: ${error.message}`, {
+            durationMs: duration,
+            error: error.message,
+            stack: error.stack,
+          });
+        }
+        throw error;
+      }
+    }
+
+    /**
+     * Sanitize arguments for logging (remove sensitive data from logs)
+     */
+    _sanitizeArguments(args) {
+      if (!args) return {};
+      const sanitized = { ...args };
+      // Remove _meta from logged arguments
+      delete sanitized._meta;
+      return sanitized;
+    }
+
+    serverClosed() {
+      const logger = createLogger(this._logBuffer, 'mcp_server');
+      logger.info('MCP session closed');
+      super.serverClosed();
     }
   };
 }

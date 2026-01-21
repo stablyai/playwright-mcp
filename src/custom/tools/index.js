@@ -17,6 +17,7 @@
 'use strict';
 
 const setupPageTools = require('./setup-page');
+const readLogTools = require('./read-log');
 
 /**
  * All custom tools aggregated from individual tool modules.
@@ -24,6 +25,7 @@ const setupPageTools = require('./setup-page');
  */
 const customTools = [
   ...setupPageTools,
+  ...readLogTools,
 ];
 
 module.exports = { customTools };
