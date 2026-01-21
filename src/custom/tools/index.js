@@ -18,6 +18,10 @@
 
 const setupPageTools = require('./setup-page');
 const readLogTools = require('./read-log');
+const testListTools = require('./test-list');
+const testRunTools = require('./test-run');
+const testDebugTools = require('./test-debug');
+const writeTestTools = require('./write-test');
 
 /**
  * All custom tools aggregated from individual tool modules.
@@ -26,6 +30,10 @@ const readLogTools = require('./read-log');
 const customTools = [
   ...setupPageTools,
   ...readLogTools,
+  ...testListTools,
+  ...testRunTools,
+  ...testDebugTools,
+  ...writeTestTools,
 ];
 
 module.exports = { customTools };

@@ -25,8 +25,6 @@ const playwrightPath = path.dirname(require.resolve('playwright/package.json'));
 const { z } = require(path.join(playwrightCorePath, 'lib/mcpBundle'));
 const { defineTool } = require(path.join(playwrightPath, 'lib/mcp/browser/tools/tool'));
 
-const { LOG_LEVELS } = require('../log-buffer');
-
 /**
  * read_log tool definition
  */
